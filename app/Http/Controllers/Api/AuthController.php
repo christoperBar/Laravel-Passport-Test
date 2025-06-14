@@ -4,23 +4,23 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Request as RequestModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 
 class AuthController extends Controller
 {
-    /**
-     * Registrasi user baru
-     */
     public function register(Request $request): JsonResponse
     {
         // Validasi input
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed', // Laravel 12 validation
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         if ($validator->fails()) {
@@ -28,14 +28,14 @@ class AuthController extends Controller
                 'success' => false,
                 'message' => 'Validation Error',
                 'errors' => $validator->errors()
-            ], 422); // Laravel 12 menggunakan 422 untuk validation error
+            ], 422);
         }
 
         // Buat user baru
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => $request->password, // Auto-hashed di Laravel 12
+            'password' => $request->password,
         ]);
 
         // Buat token untuk user
@@ -52,9 +52,6 @@ class AuthController extends Controller
         ], 201);
     }
 
-    /**
-     * Login user
-     */
     public function login(Request $request): JsonResponse
     {
         // Validasi input
@@ -95,9 +92,6 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Logout user
-     */
     public function logout(Request $request): JsonResponse
     {
         $request->user()->token()->revoke();
@@ -108,9 +102,7 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Get user profile
-     */
+
     public function profile(Request $request): JsonResponse
     {
         return response()->json([
@@ -119,5 +111,46 @@ class AuthController extends Controller
                 'user' => $request->user()->only(['id', 'name', 'email', 'created_at'])
             ]
         ]);
+    }
+
+    public function topRequest(): JsonResponse
+    {
+        try {
+            $requests = RequestModel::get();
+
+            $grouped = $requests->groupBy(function ($req) {
+                return Carbon::parse($req->created_at)->format('Y-m');
+            });
+
+            $topDivisions = $grouped->map(function ($items, $month) {
+                return $items->groupBy(function ($item) {
+                    return $item->user->division->name;
+                })
+                ->map(function ($divisionItems) {
+                    return $divisionItems->count();
+                })
+                ->sortDesc()
+                ->take(1)
+                ->map(function ($count, $division) use ($month) {
+                    return [
+                        'bulan' => $month,
+                        'divisi' => $division,
+                        'jumlah_permintaan' => $count
+                    ];
+                })
+                ->values()
+                ->first();
+            })->filter()->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => $grouped
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
