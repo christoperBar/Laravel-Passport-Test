@@ -1,3 +1,3 @@
 # Test untuk Laravel Passport
 
-- run ==composer install== on terminal
+- run <mark>composer install</mark> on terminal
