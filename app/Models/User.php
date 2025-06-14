@@ -22,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'divisions_id'
     ];
 
     /**
@@ -46,4 +47,25 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function division()
+    {
+        return $this->belongsTo(Division::class, 'divisions_id');
+    }
+
+    public function requests()
+    {
+        return $this->hasMany(Request::class);
+    }
+
+    public function approvals()
+    {
+        return $this->hasMany(Approval::class, 'approver_id');
+    }
+
+    public function statusLogs()
+    {
+        return $this->hasMany(RequestStatusLog::class, 'updated_by');
+    }
+
 }
