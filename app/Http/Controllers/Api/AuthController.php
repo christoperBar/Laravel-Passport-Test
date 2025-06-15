@@ -10,18 +10,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
 class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
-        // Validasi input
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
+            'divisions_id' => 'required|exists:divisions,id',
         ]);
 
         if ($validator->fails()) {
@@ -32,21 +31,22 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Buat user baru
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => $request->password,
+            'password' => Hash::make($request->password),
+            'divisions_id' => $request->divisions_id,
         ]);
 
-        // Buat token untuk user
         $token = $user->createToken('API Token')->accessToken;
 
         return response()->json([
             'success' => true,
             'message' => 'User registered successfully',
             'data' => [
-                'user' => $user->only(['id', 'name', 'email']),
+                'user' => array_merge($user->only(['id', 'name', 'email', 'divisions_id']),
+                    ['division_name' => optional($user->division)->name]
+                ),
                 'token' => $token,
                 'token_type' => 'Bearer'
             ]
@@ -69,7 +69,6 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Cek kredensial
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -79,7 +78,6 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // Buat token
         $token = $user->createToken('API Token')->accessToken;
 
         return response()->json([
