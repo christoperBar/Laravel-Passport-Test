@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Request as RequestModel;
+use App\Models\RequestItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -113,7 +114,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function topRequest(): JsonResponse
+    public function topDivisonRequest(): JsonResponse
     {
         try {
             $requests = RequestModel::get();
@@ -144,7 +145,35 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $grouped
+                'data' => $topDivisions
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function topItem(): JsonResponse
+    {
+        try {
+            $items = RequestItem::get()
+                ->groupBy('item_id')
+                ->map(function ($items, $itemId) {
+                    return [
+                        'item_id' => $itemId,
+                        'nama_item' => optional($items->first()->item)->item_name,
+                        'total_permintaan' => $items->count(),
+                        'total_quantity' => $items->sum('quantity'),
+                    ];
+                })
+                ->sortByDesc('total_permintaan')
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'data' => $items
             ]);
         } catch (\Throwable $e) {
             return response()->json([

@@ -12,5 +12,6 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'profile']);
-    Route::get('/top-request', [AuthController::class, 'topRequest']);
+    Route::get('/top-request', [AuthController::class, 'topDivisonRequest']);
+    Route::get('/top-item', [AuthController::class, 'topItem']);
 });
